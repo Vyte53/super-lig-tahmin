@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Süper Lig Tahmin Tablosu</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    :root {
+      --bg: #0a0c12;
+      --surface: #12151f;
+      --surface2: #1a1e2e;
+      --border: #252a3a;
+      --text: #e8eaf0;
+      --muted: #6b7280;
+      --gold: #f5c842;
+      --ucl: #1a6edb;
+      --uel: #f07c22;
+      --uecl: #4aad6a;
+      --rele: #e03535;
+      --accent: #f5c842;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Barlow', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* BACKGROUND TEXTURE */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 20% 0%, rgba(245,200,66,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 50% at 85% 90%, rgba(26,110,219,0.06) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px 16px 200px;
+    }
+
+    /* CAPTURE AREA (PNG için arka plan düzeltmesi) */
+    #captureArea {
+      background: var(--bg);
+      padding: 24px;
+      border-radius: 16px;
+      margin-bottom: 24px;
+    }
+
+    /* HEADER */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      margin-bottom: 36px;
+    }
+
+    .logo-badge {
+      width: 56px; height: 56px;
+      background: var(--gold);
+      border-radius: 12px;
+      display: grid; place-items: center;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      color: #000;
+      flex-shrink: 0;
+      box-shadow: 0 0 24px rgba(245,200,66,0.35);
+    }
+
+    header h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(28px, 6vw, 44px);
+      letter-spacing: 2px;
+      line-height: 1;
+    }
+
+    header p {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* LEGEND */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .legend-dot {
+      width: 12px; height: 12px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    /* TABLE */
+    .table-wrapper {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .table-header {
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      gap: 0;
+      padding: 12px 16px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+    }
+
+    .table-row {
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      align-items: center;
+      padding: 6px 16px;
+      border-bottom: 1px solid var(--border);
+      border-left: 4px solid transparent;
+      transition: background 0.15s, border-left-color 0.2s;
+      min-height: 58px;
+      cursor: default;
+    }
+
+    .table-row:last-child { border-bottom: none; }
+
+    .table-row.zone-champion   { border-left-color: var(--gold); }
+    .table-row.zone-ucl        { border-left-color: var(--ucl); }
+    .table-row.zone-uel        { border-left-color: var(--uel); }
+    .table-row.zone-uecl       { border-left-color: var(--uecl); }
+    .table-row.zone-relegation { border-left-color: var(--rele); }
+    .table-row.zone-relegation .rank-num { color: var(--rele); }
+
+    .table-row.drag-over {
+      background: rgba(245,200,66,0.07);
+    }
+
+    .rank-num {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .zone-champion .rank-num  { color: var(--gold); }
+    .zone-ucl .rank-num       { color: var(--ucl); }
+    .zone-uel .rank-num       { color: var(--uel); }
+    .zone-uecl .rank-num      { color: var(--uecl); }
+
+    .team-cell {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .team-logo {
+      width: 40px; height: 40px;
+      object-fit: contain;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+      flex-shrink: 0;
+      pointer-events: none;
+    }
+
+    .team-name {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    .zone-badge {
+      margin-left: auto;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      white-space: nowrap;
+      opacity: 0.9;
+    }
+
+    .badge-champion { background: rgba(245,200,66,0.15); color: var(--gold); }
+    .badge-ucl      { background: rgba(26,110,219,0.15); color: #5aa4ff; }
+    .badge-uel      { background: rgba(240,124,34,0.15); color: #f09f55; }
+    .badge-uecl     { background: rgba(74,173,106,0.15); color: #6dd491; }
+    .badge-rele     { background: rgba(224,53,53,0.15); color: #f07070; }
+
+    /* CONTROLS (Buttons) */
+    .controls {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 32px;
+    }
+
+    .action-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: 'Barlow', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 10px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .action-btn:hover { border-color: var(--gold); color: var(--gold); }
+    .action-btn.save:hover { border-color: var(--uecl); color: var(--uecl); }
+
+    /* BENCH */
+    .bench-section {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 100;
+    }
+
+    .bench-handle {
+      background: var(--surface2);
+      border-top: 2px solid var(--border);
+      padding: 10px 16px 8px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .bench-handle::before {
+      content: '';
+      width: 36px; height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+    }
+
+    .bench-body {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 12px 16px 16px;
+      max-height: 160px;
+      overflow-y: auto;
+      transition: max-height 0.3s ease;
+    }
+
+    .bench-body.collapsed { max-height: 0; overflow: hidden; padding: 0 16px; }
+
+    .bench-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .bench-team {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 7px 12px;
+      cursor: grab;
+      transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+      user-select: none;
+    }
+
+    .bench-team:hover {
+      border-color: var(--gold);
+      box-shadow: 0 0 12px rgba(245,200,66,0.15);
+      transform: translateY(-1px);
+    }
+
+    .bench-team:active { cursor: grabbing; transform: scale(0.97); }
+
+    .bench-team img {
+      width: 28px; height: 28px;
+      object-fit: contain;
+      pointer-events: none;
+    }
+
+    .bench-team span {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    /* DRAGGING GHOST */
+    .dragging {
+      opacity: 0.4;
+    }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    @media (max-width: 520px) {
+      .zone-badge { display: none; }
+      .bench-team span { font-size: 11px; }
+      #captureArea { padding: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrapper">
+  
+  <div id="captureArea">
+    <header>
+      <div class="logo-badge">SL</div>
+      <div>
+        <h1>Süper Lig Tahmin Tablosu</h1>
+        <p>Takımları tabloya sürükle &amp; bırak — kendi sıralamanı oluştur</p>
+      </div>
+    </header>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--gold)"></div>Şampiyon</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--ucl)"></div>Şampiyonlar Ligi Ön Eleme</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--uel)"></div>UEFA Avrupa Ligi Eleme</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--uecl)"></div>Konferans Ligi Eleme</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--rele)"></div>Küme Düşme</div>
+    </div>
+
+    <div class="table-wrapper" id="tableWrapper">
+      <div class="table-header">
+        <div style="text-align:center">#</div>
+        <div>Takım</div>
+      </div>
+      <div id="tableBody"></div>
+    </div>
+  </div>
+  
+  <div class="controls">
+    <button class="action-btn" onclick="resetTable()">↺ Sıfırla</button>
+    <button class="action-btn save" onclick="saveAsPNG()" id="saveBtn">⬇️ Tabloyu İndir (.PNG)</button>
+  </div>
+
+</div>
+
+<div class="bench-section" id="benchSection">
+  <div class="bench-handle" id="benchHandle" onclick="toggleBench()">
+    Takımlar — Sürükle &amp; Tabloya Bırak
+  </div>
+  <div class="bench-body" id="benchBody">
+    <div class="bench-grid" id="benchGrid"></div>
+  </div>
+</div>
+
+<script>
+const TEAMS = [
+  { id: 'galatasaray',   name: 'Galatasaray',   logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Logo_Galatasaray.svg/200px-Logo_Galatasaray.svg.png' },
+  { id: 'fenerbahce',    name: 'Fenerbahçe',    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/Fenerbah%C3%A7e_SK.png/200px-Fenerbah%C3%A7e_SK.png' },
+  { id: 'besiktas',      name: 'Beşiktaş',      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Besiktas_JK_logo.svg/200px-Besiktas_JK_logo.svg.png' },
+  { id: 'trabzonspor',   name: 'Trabzonspor',   logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/Trabzonspor_logo.svg/200px-Trabzonspor_logo.svg.png' },
+  { id: 'basaksehir',    name: 'Başakşehir',    logo: 'https://upload.wikimedia.org/wikipedia/tr/thumb/6/6a/Istanbul_Basaksehir_FK.png/200px-Istanbul_Basaksehir_FK.png' },
+  { id: 'sivasspor',     name: 'Sivasspor',     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Sivasspor_logo.svg/200px-Sivasspor_logo.svg.png' },
+  { id: 'kasimpasa',     name: 'Kasımpaşa',     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Kasimpasa_SK.png/200px-Kasimpasa_SK.png' },
+  { id: 'antalyaspor',   name: 'Antalyaspor',   logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Antalyaspor_logo.svg/200px-Antalyaspor_logo.svg.png' },
+  { id: 'alanyaspor',    name: 'Alanyaspor',    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/Alanyaspor_logo.svg/200px-Alanyaspor_logo.svg.png' },
+  { id: 'konyaspor',     name: 'Konyaspor',     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Konyaspor_logo.svg/200px-Konyaspor_logo.svg.png' },
+  { id: 'gaziantep',     name: 'Gaziantep FK',  logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Gaziantep_FK.png/200px-Gaziantep_FK.png' },
+  { id: 'hatayspor',     name: 'Hatayspor',     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Hatayspor_logo.svg/200px-Hatayspor_logo.svg.png' },
+  { id: 'kayserispor',   name: 'Kayserispor',   logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Kayserispor_logo.svg/200px-Kayserispor_logo.svg.png' },
+  { id: 'samsunspor',    name: 'Samsunspor',    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Samsunspor_logo.svg/200px-Samsunspor_logo.svg.png' },
+  { id: 'rizespor',      name: 'Çaykur Rizespor',logo:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Caykur_Rizespor_logo.svg/200px-Caykur_Rizespor_logo.svg.png' },
+  { id: 'adanademirspor',name: 'Adana Demirspor',logo:'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Adana_Demirspor_logo.svg/200px-Adana_Demirspor_logo.svg.png' },
+  { id: 'eyupspor',      name: 'Eyüpspor',      logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Ey%C3%BCpspor_logo.svg/200px-Ey%C3%BCpspor_logo.svg.png' },
+  { id: 'bodrumspor',    name: 'Bodrumspor',    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Bodrumspor_Logo.png/200px-Bodrumspor_Logo.png' },
+];
+
+// State: tableSlots = array of team IDs (null = empty), benchTeams = remaining
+let tableSlots = new Array(18).fill(null);
+let benchTeams = [...TEAMS];
+
+// DRAG STATE
+let dragSource = null; // { type: 'bench'|'table', id, slotIndex }
+let dragEl = null;
+
+function getZone(rank) {
+  if (rank === 1)  return 'champion';
+  if (rank === 2)  return 'ucl';
+  if (rank === 3)  return 'uel';
+  if (rank === 4)  return 'uecl';
+  if (rank >= 16) return 'relegation';
+  return '';
+}
+
+function getZoneLabel(rank) {
+  if (rank === 1)  return ['Şampiyon 🏆', 'badge-champion'];
+  if (rank === 2)  return ['Şampiyonlar Ligi', 'badge-ucl'];
+  if (rank === 3)  return ['Avrupa Ligi', 'badge-uel'];
+  if (rank === 4)  return ['Konferans Ligi', 'badge-uecl'];
+  if (rank >= 16) return ['Küme Düşme', 'badge-rele'];
+  return [null, ''];
+}
+
+function renderTable() {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+
+  for (let i = 0; i < 18; i++) {
+    const rank = i + 1;
+    const zone = getZone(rank);
+    const [label, badgeClass] = getZoneLabel(rank);
+    const teamId = tableSlots[i];
+    const team = teamId ? TEAMS.find(t => t.id === teamId) : null;
+
+    const row = document.createElement('div');
+    row.className = `table-row zone-${zone}`;
+    row.dataset.slotIndex = i;
+
+    row.innerHTML = `
+      <div class="rank-num">${rank}</div>
+      <div class="team-cell">
+        ${team
+          ? `<img class="team-logo" src="${team.logo}" alt="${team.name}" draggable="false" />
+             <span class="team-name">${team.name}</span>
+             ${label ? `<span class="zone-badge ${badgeClass}">${label}</span>` : ''}`
+          : `<span style="font-size:13px;color:var(--muted);font-style:italic">Buraya sürükle</span>
+             ${label ? `<span class="zone-badge ${badgeClass}" style="opacity:0.4">${label}</span>` : ''}`
+        }
+      </div>
+    `;
+
+    if (team) {
+      row.draggable = true;
+      row.style.cursor = 'grab';
+      row.addEventListener('dragstart', e => onDragStart(e, 'table', team.id, i));
+      row.addEventListener('dragend', onDragEnd);
+    }
+
+    row.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('drag-over'); });
+    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+    row.addEventListener('drop', e => onDropTable(e, i));
+
+    tbody.appendChild(row);
+  }
+}
+
+function renderBench() {
+  const grid = document.getElementById('benchGrid');
+  grid.innerHTML = '';
+
+  if (benchTeams.length === 0) {
+    grid.innerHTML = '<span style="font-size:13px;color:var(--muted);padding:4px 8px">Tüm takımlar tabloda ✓</span>';
+    return;
+  }
+
+  benchTeams.forEach(team => {
+    const el = document.createElement('div');
+    el.className = 'bench-team';
+    el.draggable = true;
+    el.dataset.teamId = team.id;
+    el.innerHTML = `<img src="${team.logo}" alt="${team.name}" /><span>${team.name}</span>`;
+
+    el.addEventListener('dragstart', e => onDragStart(e, 'bench', team.id, null));
+    el.addEventListener('dragend', onDragEnd);
+    grid.appendChild(el);
+  });
+}
+
+// ---- DRAG HANDLERS ----
+
+function onDragStart(e, type, id, slotIndex) {
+  dragSource = { type, id, slotIndex };
+  dragEl = e.currentTarget;
+  setTimeout(() => { if (dragEl) dragEl.classList.add('dragging'); }, 0);
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function onDragEnd() {
+  if (dragEl) { dragEl.classList.remove('dragging'); dragEl = null; }
+  document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+}
+
+function onDropTable(e, targetSlot) {
+  e.preventDefault();
+  if (!dragSource) return;
+
+  const existingTeamInTarget = tableSlots[targetSlot];
+
+  if (dragSource.type === 'bench') {
+    if (existingTeamInTarget) {
+      benchTeams.push(TEAMS.find(t => t.id === existingTeamInTarget));
+    }
+    tableSlots[targetSlot] = dragSource.id;
+    benchTeams = benchTeams.filter(t => t.id !== dragSource.id);
+
+  } else if (dragSource.type === 'table') {
+    tableSlots[targetSlot] = dragSource.id;
+    tableSlots[dragSource.slotIndex] = existingTeamInTarget; 
+  }
+
+  dragSource = null;
+  renderTable();
+  renderBench();
+}
+
+// Bench'e geri bırakma özelliği
+document.getElementById('benchGrid').addEventListener('dragover', e => e.preventDefault());
+document.getElementById('benchGrid').addEventListener('drop', e => {
+  e.preventDefault();
+  if (!dragSource) return;
+  if (dragSource.type === 'table' && dragSource.id) {
+    tableSlots[dragSource.slotIndex] = null;
+    benchTeams.push(TEAMS.find(t => t.id === dragSource.id));
+  }
+  dragSource = null;
+  renderTable();
+  renderBench();
+});
+
+// --- AUTO-SCROLL (MOUSE İLE SÜRÜKLEME) ---
+document.addEventListener('dragover', (e) => {
+  e.preventDefault(); 
+  
+  const threshold = 100; // Ekranın alt/üst kenarına olan yakınlık (piksel)
+  const speed = 15;      // Kaydırma hızı
+
+  if (e.clientY < threshold) {
+    window.scrollBy(0, -speed);
+  } else if (e.clientY > window.innerHeight - threshold) {
+    window.scrollBy(0, speed);
+  }
+});
+
+// BENCH TOGGLE
+let benchOpen = true;
+function toggleBench() {
+  benchOpen = !benchOpen;
+  const body = document.getElementById('benchBody');
+  const handle = document.getElementById('benchHandle');
+  if (benchOpen) {
+    body.classList.remove('collapsed');
+    handle.style.borderTop = '2px solid var(--border)';
+  } else {
+    body.classList.add('collapsed');
+  }
+}
+
+function resetTable() {
+  tableSlots = new Array(18).fill(null);
+  benchTeams = [...TEAMS];
+  renderTable();
+  renderBench();
+  if (!benchOpen) toggleBench();
+}
+
+// --- PNG KAYDETME FONKSİYONU ---
+function saveAsPNG() {
+  const captureArea = document.getElementById('captureArea');
+  const saveBtn = document.getElementById('saveBtn');
+  
+  const originalText = saveBtn.innerHTML;
+  saveBtn.innerHTML = '⏳ Kaydediliyor...';
+  saveBtn.disabled = true;
+
+  html2canvas(captureArea, {
+    backgroundColor: '#0a0c12', 
+    scale: 2 // Daha yüksek çözünürlük için
+  }).then(canvas => {
+    const link = document.createElement('a');
+    link.download = 'superlig-tahmin-tablosu.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    
+    saveBtn.innerHTML = originalText;
+    saveBtn.disabled = false;
+  }).catch(err => {
+    console.error('Canvas error:', err);
+    alert('Tablo kaydedilirken bir hata oluştu.');
+    saveBtn.innerHTML = originalText;
+    saveBtn.disabled = false;
+  });
+}
+
+// TOUCH SUPPORT (mobile)
+let touchTeamId = null;
+let touchType = null;
+let touchSlot = null;
+let touchGhost = null;
+
+function createGhost(team, x, y) {
+  removeGhost();
+  touchGhost = document.createElement('div');
+  touchGhost.style.cssText = `
+    position:fixed; z-index:9999; pointer-events:none;
+    display:flex; align-items:center; gap:8px;
+    background:#1a1e2e; border:1px solid #f5c842;
+    border-radius:10px; padding:8px 12px;
+    font-family:Barlow,sans-serif; font-size:13px; font-weight:600;
+    color:#e8eaf0; box-shadow:0 8px 24px rgba(0,0,0,0.6);
+    opacity:0.92; transition:none;
+    transform:translate(-50%,-50%);
+    left:${x}px; top:${y}px;
+  `;
+  const img = document.createElement('img');
+  img.src = team.logo;
+  img.style.cssText = 'width:28px;height:28px;object-fit:contain;';
+  touchGhost.appendChild(img);
+  touchGhost.appendChild(document.createTextNode(team.name));
+  document.body.appendChild(touchGhost);
+}
+
+function removeGhost() {
+  if (touchGhost) { touchGhost.remove(); touchGhost = null; }
+}
+
+function addTouchListeners() {
+  document.querySelectorAll('.bench-team').forEach(el => {
+    el.addEventListener('touchstart', e => {
+      const id = el.dataset.teamId;
+      touchTeamId = id; touchType = 'bench'; touchSlot = null;
+      const t = e.touches[0];
+      createGhost(TEAMS.find(x => x.id === id), t.clientX, t.clientY);
+      e.preventDefault();
+    }, { passive: false });
+  });
+
+  document.querySelectorAll('.table-row[draggable]').forEach(el => {
+    el.addEventListener('touchstart', e => {
+      const slot = parseInt(el.dataset.slotIndex);
+      const id = tableSlots[slot];
+      if (!id) return;
+      touchTeamId = id; touchType = 'table'; touchSlot = slot;
+      const t = e.touches[0];
+      createGhost(TEAMS.find(x => x.id === id), t.clientX, t.clientY);
+      e.preventDefault();
+    }, { passive: false });
+  });
+
+  document.addEventListener('touchmove', e => {
+    if (!touchTeamId) return;
+    const t = e.touches[0];
+    if (touchGhost) {
+      touchGhost.style.left = t.clientX + 'px';
+      touchGhost.style.top = t.clientY + 'px';
+    }
+
+    // --- AUTO-SCROLL (DOKUNMATİK EKRAN İÇİN) ---
+    const threshold = 100;
+    const speed = 15;
+    if (t.clientY < threshold) {
+      window.scrollBy(0, -speed);
+    } else if (t.clientY > window.innerHeight - threshold) {
+      window.scrollBy(0, speed);
+    }
+
+    e.preventDefault();
+  }, { passive: false });
+
+  document.addEventListener('touchend', e => {
+    if (!touchTeamId) return;
+    const t = e.changedTouches[0];
+    removeGhost();
+
+    // find element under finger
+    const el = document.elementFromPoint(t.clientX, t.clientY);
+    const row = el ? el.closest('.table-row') : null;
+    const benchArea = el ? el.closest('#benchBody') : null;
+
+    if (row) {
+      const targetSlot = parseInt(row.dataset.slotIndex);
+      const existing = tableSlots[targetSlot];
+      if (touchType === 'bench') {
+        if (existing) benchTeams.push(TEAMS.find(x => x.id === existing));
+        tableSlots[targetSlot] = touchTeamId;
+        benchTeams = benchTeams.filter(x => x.id !== touchTeamId);
+      } else {
+        tableSlots[targetSlot] = touchTeamId;
+        tableSlots[touchSlot] = existing;
+      }
+    } else if (benchArea && touchType === 'table') {
+      tableSlots[touchSlot] = null;
+      benchTeams.push(TEAMS.find(x => x.id === touchTeamId));
+    }
+
+    touchTeamId = null; touchType = null; touchSlot = null;
+    renderTable();
+    renderBench();
+    setTimeout(addTouchListeners, 50);
+  }, { passive: false });
+}
+
+// INIT
+renderTable();
+renderBench();
+setTimeout(addTouchListeners, 100);
+
+// re-add touch listeners after each render
+const observer = new MutationObserver(() => setTimeout(addTouchListeners, 50));
+observer.observe(document.getElementById('tableBody'), { childList: true });
+observer.observe(document.getElementById('benchGrid'), { childList: true });
+</script>
+</body>
+</html>
