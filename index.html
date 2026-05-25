@@ -32,7 +32,6 @@
       overflow-x: hidden;
     }
 
-    /* BACKGROUND TEXTURE */
     body::before {
       content: '';
       position: fixed;
@@ -52,7 +51,6 @@
       padding: 32px 16px 200px;
     }
 
-    /* CAPTURE AREA (PNG için arka plan düzeltmesi) */
     #captureArea {
       background: var(--bg);
       padding: 24px;
@@ -60,7 +58,6 @@
       margin-bottom: 24px;
     }
 
-    /* HEADER */
     header {
       display: flex;
       align-items: center;
@@ -93,7 +90,6 @@
       margin-top: 4px;
     }
 
-    /* LEGEND */
     .legend {
       display: flex;
       flex-wrap: wrap;
@@ -118,7 +114,6 @@
       flex-shrink: 0;
     }
 
-    /* TABLE */
     .table-wrapper {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -189,6 +184,7 @@
       filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
       flex-shrink: 0;
       pointer-events: none;
+      border-radius: 50%;
     }
 
     .team-name {
@@ -215,7 +211,6 @@
     .badge-uecl     { background: rgba(74,173,106,0.15); color: #6dd491; }
     .badge-rele     { background: rgba(224,53,53,0.15); color: #f07070; }
 
-    /* CONTROLS (Buttons) */
     .controls {
       display: flex;
       gap: 12px;
@@ -245,7 +240,6 @@
     .action-btn:hover { border-color: var(--gold); color: var(--gold); }
     .action-btn.save:hover { border-color: var(--uecl); color: var(--uecl); }
 
-    /* BENCH */
     .bench-section {
       position: fixed;
       bottom: 0; left: 0; right: 0;
@@ -319,6 +313,7 @@
       width: 28px; height: 28px;
       object-fit: contain;
       pointer-events: none;
+      border-radius: 50%;
     }
 
     .bench-team span {
@@ -327,12 +322,10 @@
       white-space: nowrap;
     }
 
-    /* DRAGGING GHOST */
     .dragging {
       opacity: 0.4;
     }
 
-    /* scrollbar */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -412,12 +405,10 @@ const TEAMS = [
   { id: 'bodrumspor',    name: 'Bodrumspor',    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Bodrumspor_Logo.png/200px-Bodrumspor_Logo.png' },
 ];
 
-// State: tableSlots = array of team IDs (null = empty), benchTeams = remaining
 let tableSlots = new Array(18).fill(null);
 let benchTeams = [...TEAMS];
 
-// DRAG STATE
-let dragSource = null; // { type: 'bench'|'table', id, slotIndex }
+let dragSource = null; 
 let dragEl = null;
 
 function getZone(rank) {
@@ -438,6 +429,12 @@ function getZoneLabel(rank) {
   return [null, ''];
 }
 
+// LOGO HATA YAKALAYICI (FALLBACK)
+// Resim yüklenmezse ui-avatars API'si ile takımın baş harflerini içeren ikon oluşturur.
+function getFallbackLogo(teamName) {
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(teamName)}&background=252a3a&color=f5c842&bold=true&size=64`;
+}
+
 function renderTable() {
   const tbody = document.getElementById('tableBody');
   tbody.innerHTML = '';
@@ -453,11 +450,12 @@ function renderTable() {
     row.className = `table-row zone-${zone}`;
     row.dataset.slotIndex = i;
 
+    // onerror eklendi
     row.innerHTML = `
       <div class="rank-num">${rank}</div>
       <div class="team-cell">
         ${team
-          ? `<img class="team-logo" src="${team.logo}" alt="${team.name}" draggable="false" />
+          ? `<img class="team-logo" src="${team.logo}" alt="${team.name}" draggable="false" onerror="this.onerror=null; this.src='${getFallbackLogo(team.name)}';" />
              <span class="team-name">${team.name}</span>
              ${label ? `<span class="zone-badge ${badgeClass}">${label}</span>` : ''}`
           : `<span style="font-size:13px;color:var(--muted);font-style:italic">Buraya sürükle</span>
@@ -495,15 +493,14 @@ function renderBench() {
     el.className = 'bench-team';
     el.draggable = true;
     el.dataset.teamId = team.id;
-    el.innerHTML = `<img src="${team.logo}" alt="${team.name}" /><span>${team.name}</span>`;
+    // onerror eklendi
+    el.innerHTML = `<img src="${team.logo}" alt="${team.name}" onerror="this.onerror=null; this.src='${getFallbackLogo(team.name)}';" /><span>${team.name}</span>`;
 
     el.addEventListener('dragstart', e => onDragStart(e, 'bench', team.id, null));
     el.addEventListener('dragend', onDragEnd);
     grid.appendChild(el);
   });
 }
-
-// ---- DRAG HANDLERS ----
 
 function onDragStart(e, type, id, slotIndex) {
   dragSource = { type, id, slotIndex };
@@ -540,7 +537,6 @@ function onDropTable(e, targetSlot) {
   renderBench();
 }
 
-// Bench'e geri bırakma özelliği
 document.getElementById('benchGrid').addEventListener('dragover', e => e.preventDefault());
 document.getElementById('benchGrid').addEventListener('drop', e => {
   e.preventDefault();
@@ -554,13 +550,10 @@ document.getElementById('benchGrid').addEventListener('drop', e => {
   renderBench();
 });
 
-// --- AUTO-SCROLL (MOUSE İLE SÜRÜKLEME) ---
 document.addEventListener('dragover', (e) => {
   e.preventDefault(); 
-  
-  const threshold = 100; // Ekranın alt/üst kenarına olan yakınlık (piksel)
-  const speed = 15;      // Kaydırma hızı
-
+  const threshold = 100; 
+  const speed = 15;      
   if (e.clientY < threshold) {
     window.scrollBy(0, -speed);
   } else if (e.clientY > window.innerHeight - threshold) {
@@ -568,7 +561,6 @@ document.addEventListener('dragover', (e) => {
   }
 });
 
-// BENCH TOGGLE
 let benchOpen = true;
 function toggleBench() {
   benchOpen = !benchOpen;
@@ -590,7 +582,6 @@ function resetTable() {
   if (!benchOpen) toggleBench();
 }
 
-// --- PNG KAYDETME FONKSİYONU ---
 function saveAsPNG() {
   const captureArea = document.getElementById('captureArea');
   const saveBtn = document.getElementById('saveBtn');
@@ -601,7 +592,8 @@ function saveAsPNG() {
 
   html2canvas(captureArea, {
     backgroundColor: '#0a0c12', 
-    scale: 2 // Daha yüksek çözünürlük için
+    scale: 2,
+    useCORS: true // Dış bağlantılı (avatar vb) resimlerin Canvas'a çizilebilmesi için eklendi
   }).then(canvas => {
     const link = document.createElement('a');
     link.download = 'superlig-tahmin-tablosu.png';
@@ -618,7 +610,6 @@ function saveAsPNG() {
   });
 }
 
-// TOUCH SUPPORT (mobile)
 let touchTeamId = null;
 let touchType = null;
 let touchSlot = null;
@@ -640,7 +631,9 @@ function createGhost(team, x, y) {
   `;
   const img = document.createElement('img');
   img.src = team.logo;
-  img.style.cssText = 'width:28px;height:28px;object-fit:contain;';
+  // Ghost element için de onerror
+  img.onerror = function() { this.onerror=null; this.src=getFallbackLogo(team.name); };
+  img.style.cssText = 'width:28px;height:28px;object-fit:contain;border-radius:50%;';
   touchGhost.appendChild(img);
   touchGhost.appendChild(document.createTextNode(team.name));
   document.body.appendChild(touchGhost);
@@ -681,7 +674,6 @@ function addTouchListeners() {
       touchGhost.style.top = t.clientY + 'px';
     }
 
-    // --- AUTO-SCROLL (DOKUNMATİK EKRAN İÇİN) ---
     const threshold = 100;
     const speed = 15;
     if (t.clientY < threshold) {
@@ -698,7 +690,6 @@ function addTouchListeners() {
     const t = e.changedTouches[0];
     removeGhost();
 
-    // find element under finger
     const el = document.elementFromPoint(t.clientX, t.clientY);
     const row = el ? el.closest('.table-row') : null;
     const benchArea = el ? el.closest('#benchBody') : null;
@@ -726,12 +717,10 @@ function addTouchListeners() {
   }, { passive: false });
 }
 
-// INIT
 renderTable();
 renderBench();
 setTimeout(addTouchListeners, 100);
 
-// re-add touch listeners after each render
 const observer = new MutationObserver(() => setTimeout(addTouchListeners, 50));
 observer.observe(document.getElementById('tableBody'), { childList: true });
 observer.observe(document.getElementById('benchGrid'), { childList: true });
