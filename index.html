@@ -102,8 +102,14 @@
       background-size: contain;
       background-position: left center;
       background-repeat: no-repeat;
-      filter: drop-shadow(0 4px 12px rgba(255,255,255,0.1));
       flex-shrink: 0;
+      /* Sadece Süper Lig logosuna özel beyaz kontur */
+      filter: 
+        drop-shadow(1px 0 0 white) 
+        drop-shadow(-1px 0 0 white) 
+        drop-shadow(0 1px 0 white) 
+        drop-shadow(0 -1px 0 white)
+        drop-shadow(0 4px 12px rgba(255,255,255,0.1)); 
     }
 
     header h1 {
@@ -385,7 +391,7 @@
     <header>
       <div class="lig-logo" style="background-image: url('logolar/superlig.png');"></div>
       <div>
-        <h1>Süper Lig Tahmin Tablosu</h1>
+        <h1>26/27 Süper Lig Tahmin Tablosu</h1>
         <p>Takımları tabloya sürükle &amp; bırak — kendi sıralamanı oluştur</p>
       </div>
     </header>
@@ -407,7 +413,7 @@
     </div>
     
     <div class="table-footer">
-      Karadeniz'in Atmacaları
+      Karadeniz'in Atmacaları — Rizespor
     </div>
   </div>
 
